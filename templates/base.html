@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <!-- Мета-теги та підключення стилів -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TraderApp{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Підключення Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <!-- Хедер -->
+    <header class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <a class="navbar-brand" href="{{ url_for('index') }}">TraderApp</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarContent"
+            aria-controls="navbarContent" aria-expanded="false" aria-label="Переключити навігацію">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarContent">
+            <!-- Можливо, додаткові пункти меню -->
+        </div>
+        <div class="ml-auto">
+            {% if current_user.is_authenticated %}
+                <span class="navbar-text mr-3">Вітаємо, {{ current_user.username }}!</span>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Вийти</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-outline-light">Увійти</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Сайдбар -->
+            <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+                <div class="sidebar-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <!-- Головна -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                                <i class="fas fa-home"></i> Головна
+                            </a>
+                        </li>
+                        {% if current_user.is_authenticated %}
+                            <!-- Профіль -->
+                            <li class="nav-item">
+                                <a class="nav-link {% if 'profile' in request.endpoint %}active{% endif %}" href="{{ url_for('profile') }}">
+                                    <i class="fas fa-user"></i> Профіль
+                                </a>
+                            </li>
+                            {% if current_user.role in ['owner', 'admin', 'operator', 'seller'] %}
+                                <!-- Продажі -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'sales' in request.endpoint %}active{% endif %}" href="{{ url_for('sales') }}">
+                                        <i class="fas fa-shopping-cart"></i> Продажі
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ url_for('create_sale') }}">
+                                        <i class="fas fa-plus"></i> Додати продаж
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if current_user.role in ['owner', 'admin', 'operator'] %}
+                                <!-- Торговельні точки -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'trade_points' in request.endpoint %}active{% endif %}" href="{{ url_for('trade_points') }}">
+                                        <i class="fas fa-store"></i> Торговельні точки
+                                    </a>
+                                </li>
+                                <!-- Продавці -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'sellers' in request.endpoint %}active{% endif %}" href="{{ url_for('sellers') }}">
+                                        <i class="fas fa-user-tie"></i> Продавці
+                                    </a>
+                                </li>
+                                <!-- Заявки з торговельних точок -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'requests' in request.endpoint %}active{% endif %}" href="{{ url_for('requests_route') }}">
+                                        <i class="fas fa-clipboard-list"></i> Заявки з торговельних точок
+                                    </a>
+                                </li>
+                                <!-- Постачальники -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'suppliers' in request.endpoint %}active{% endif %}" href="{{ url_for('suppliers') }}">
+                                        <i class="fas fa-truck"></i> Постачальники
+                                    </a>
+                                </li>
+                                <!-- Замовлення постачальникам -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'supplier_orders' in request.endpoint %}active{% endif %}" href="{{ url_for('supplier_orders') }}">
+                                        <i class="fas fa-receipt"></i> Замовлення постачальникам
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ url_for('create_supplier_order') }}">
+                                        <i class="fas fa-plus"></i> Створити замовлення постачальнику
+                                    </a>
+                                </li>
+                                <!-- Отримання товару від постачальника -->
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ url_for('supplier_orders_receive_list') }}">
+                                        <i class="fas fa-dolly"></i> Отримати товар від постачальника
+                                    </a>
+                                </li>
+                                <!-- Товари -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'products' in request.endpoint %}active{% endif %}" href="{{ url_for('products') }}">
+                                        <i class="fas fa-box"></i> Товари
+                                    </a>
+                                </li>
+                                <!-- Покупці -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'customers' in request.endpoint %}active{% endif %}" href="{{ url_for('customers') }}">
+                                        <i class="fas fa-users"></i> Покупці
+                                    </a>
+                                </li>
+                                <!-- Звіти -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'reports' in request.endpoint %}active{% endif %}" href="{{ url_for('reports') }}">
+                                        <i class="fas fa-chart-line"></i> Звіти
+                                    </a>
+                                </li>
+                            {% endif %}
+                            {% if current_user.role in ['owner', 'admin'] %}
+                                <!-- Управління користувачами -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if 'user_management' in request.endpoint %}active{% endif %}" href="{{ url_for('user_management') }}">
+                                        <i class="fas fa-user-cog"></i> Управління користувачами
+                                    </a>
+                                </li>
+                            {% endif %}
+                            <!-- Вийти -->
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('logout') }}">
+                                    <i class="fas fa-sign-out-alt"></i> Вийти
+                                </a>
+                            </li>
+                        {% else %}
+                            <!-- Увійти -->
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('login') }}">
+                                    <i class="fas fa-sign-in-alt"></i> Увійти
+                                </a>
+                            </li>
+                            <!-- Реєстрація -->
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ url_for('register') }}">
+                                    <i class="fas fa-user-plus"></i> Реєстрація
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Основний вміст -->
+            <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-4">
+                <!-- Відображення флеш-повідомлень -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category }} mt-2" role="alert">
+                        {{ message }}
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                {% block content %}
+                <!-- Вміст сторінки -->
+                {% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Підключення скриптів -->
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>

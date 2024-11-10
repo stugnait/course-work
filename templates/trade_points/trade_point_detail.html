@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Деталі торговельної точки{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Деталі торговельної точки</h2>
+    <h3>{{ trade_point.name }}</h3>
+    <p><strong>Тип:</strong> {{ trade_point.type }}</p>
+    <p><strong>Розмір:</strong> {{ trade_point.size }} м²</p>
+    <p><strong>Платежі за оренду:</strong> {{ trade_point.rent_payments }} грн</p>
+    <p><strong>Комунальні послуги:</strong> {{ trade_point.utility_payments }} грн</p>
+    <p><strong>Кількість прилавків:</strong> {{ trade_point.number_of_counters }}</p>
+    <!-- Додаткові характеристики -->
+    {% if trade_point.sections %}
+        <h4>Секції</h4>
+        <ul>
+            {% for section in trade_point.sections %}
+                <li>{{ section.name }} - Поверх {{ section.floor }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% if trade_point.halls %}
+        <h4>Зали</h4>
+        <ul>
+            {% for hall in trade_point.halls %}
+                <li>{{ hall.name }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <!-- Список продавців -->
+    <h4>Продавці</h4>
+    <ul>
+        {% for seller in sellers %}
+            <li>{{ seller.name }}</li>
+        {% endfor %}
+    </ul>
+    <!-- Кнопки дій -->
+    <a href="{{ url_for('edit_trade_point', trade_point_id=trade_point._id) }}" class="btn btn-warning">Редагувати</a>
+    <a href="{{ url_for('delete_trade_point', trade_point_id=trade_point._id) }}" class="btn btn-danger">Видалити</a>
+</div>
+
+<h3 class="mt-4">Залишки товару</h3>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Кількість</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in inventory %}
+            <tr>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+{% endblock %}

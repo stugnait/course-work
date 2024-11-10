@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{% if form_type == 'edit' %}Редагувати{% else %}Додати{% endif %} покупця{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">{% if form_type == 'edit' %}Редагувати{% else %}Додати{% endif %} покупця</h2>
+    <form method="post" action="">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.characteristics.label(class="form-label") }}
+            {{ form.characteristics(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.submit(class="btn btn-success") }}
+        </div>
+    </form>
+</div>
+{% endblock %}

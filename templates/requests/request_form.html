@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Деталі заявки{% endblock %}
+{% block content %}
+<div class="container">
+<h2 class="mt-5">Додати Заявку</h2>
+    <form method="POST">
+        <div class="form-group">
+            <label for="date">Дата</label>
+            <input type="date" class="form-control" id="date" name="date" required>
+        </div>
+        <div class="form-group">
+            <label for="trade_point_id">Торговельна точка</label>
+            <select class="form-control" id="trade_point_id" name="trade_point_id">
+                {% for tp in trade_points %}
+                    <option value="{{ tp['_id'] }}">{{ tp['name'] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <h4 class="mt-4">Товари</h4>
+        <div id="products">
+            <div class="form-row">
+                <div class="form-group col-md-8">
+                    <label for="product_id_0">Товар</label>
+                    <select class="form-control" id="product_id_0" name="product_id">
+                        {% for product in products %}
+                            <option value="{{ product['_id'] }}">{{ product['name'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="quantity_0">Кількість</label>
+                    <input type="number" class="form-control" id="quantity_0" name="quantity" min="1">
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-secondary" id="add-product">Додати товар</button>
+        <div class="form-group mt-3">
+            <button type="submit" class="btn btn-primary">Зберегти</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    var productIndex = 1;
+    document.getElementById('add-product').addEventListener('click', function() {
+        var newProduct = `
+            <div class="form-row">
+                <div class="form-group col-md-8">
+                    <label for="product_id_${productIndex}">Товар</label>
+                    <select class="form-control" id="product_id_${productIndex}" name="product_id">
+                        {% for product in products %}
+                            <option value="{{ product['_id'] }}">{{ product['name'] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group col-md-4">
+                    <label for="quantity_${productIndex}">Кількість</label>
+                    <input type="number" class="form-control" id="quantity_${productIndex}" name="quantity" min="1">
+                </div>
+            </div>
+        `;
+        document.getElementById('products').insertAdjacentHTML('beforeend', newProduct);
+        productIndex++;
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Заявки з торговельних точок{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Заявки з торговельних точок</h2>
+    <a href="{{ url_for('add_request') }}" class="btn btn-primary mb-3">Додати заявку</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Торговельна точка</th>
+                <th>Дата</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for request in requests %}
+            <tr>
+                <td>{{ request.trade_point_name }}</td>
+                <td>{{ request.date}}</td>
+                <td>
+                    <a href="{{ url_for('view_request', request_id=request._id) }}" class="btn btn-info btn-sm">Переглянути</a>
+                    <a href="{{ url_for('edit_request', request_id=request._id) }}" class="btn btn-warning btn-sm">Редагувати</a>
+                    <a href="{{ url_for('delete_request', request_id=request._id) }}" class="btn btn-danger btn-sm">Видалити</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

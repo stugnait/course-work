@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{% if form_type == 'edit' %}Редагувати{% else %}Додати{% endif %} торговельну точку{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">{% if form_type == 'edit' %}Редагувати{% else %}Додати{% endif %} торговельну точку</h2>
+    <form method="post" action="">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.type.label(class="form-label") }}
+            {{ form.type(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.size.label(class="form-label") }}
+            {{ form.size(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.rent_payments.label(class="form-label") }}
+            {{ form.rent_payments(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.utility_payments.label(class="form-label") }}
+            {{ form.utility_payments(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.number_of_counters.label(class="form-label") }}
+            {{ form.number_of_counters(class="form-control") }}
+        </div>
+        <!-- Додаткові поля для універмагів та магазинів -->
+        {% if form.type.data in ['універмаг', 'магазин'] %}
+            <div class="form-group">
+                {{ form.halls.label(class="form-label") }}
+                {{ form.halls(class="form-control") }}
+            </div>
+        {% endif %}
+        {% if form.type.data == 'універмаг' %}
+            <div class="form-group">
+                {{ form.sections.label(class="form-label") }}
+                {{ form.sections(class="form-control") }}
+            </div>
+        {% endif %}
+        <div class="form-group">
+            {{ form.submit(class="btn btn-success") }}
+        </div>
+    </form>
+</div>
+{% endblock %}

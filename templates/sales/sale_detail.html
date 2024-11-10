@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Деталі продажу{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Деталі продажу</h2>
+    <p><strong>Товар:</strong> {{ sale.product_name }}</p>
+    <p><strong>Кількість:</strong> {{ sale.quantity }}</p>
+    <p><strong>Ціна:</strong> {{ sale.price }} грн</p>
+    <p><strong>Продавець:</strong> {{ sale.seller_name }}</p>
+    <p><strong>Торговельна точка:</strong> {{ sale.trade_point_name }}</p>
+    <p><strong>Дата:</strong> {{ sale.date.strftime('%d.%m.%Y') }}</p>
+    {% if sale.customer_info %}
+        <h4>Інформація про покупця</h4>
+        <p><strong>Ім'я:</strong> {{ sale.customer_info.name }}</p>
+        <p><strong>Характеристики:</strong> {{ sale.customer_info.characteristics }}</p>
+    {% endif %}
+    <a href="{{ url_for('edit_sale', sale_id=sale._id) }}" class="btn btn-warning">Редагувати</a>
+    <a href="{{ url_for('delete_sale', sale_id=sale._id) }}" class="btn btn-danger">Видалити</a>
+</div>
+{% endblock %}

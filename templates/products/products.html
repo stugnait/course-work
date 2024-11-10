@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Товари{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Товари</h2>
+    <a href="{{ url_for('add_product') }}" class="btn btn-primary mb-3">Додати товар</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Назва</th>
+                <th>Опис</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.name }}</td>
+                <td>{{ product.description }}</td>
+                <td>
+                    <a href="{{ url_for('view_product', product_id=product._id) }}" class="btn btn-info btn-sm">Переглянути</a>
+                    <a href="{{ url_for('edit_product', product_id=product._id) }}" class="btn btn-warning btn-sm">Редагувати</a>
+                    <a href="{{ url_for('delete_product', product_id=product._id) }}" class="btn btn-danger btn-sm">Видалити</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

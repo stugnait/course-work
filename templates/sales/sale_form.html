@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Додати продаж' if form_type == 'add' else 'Редагувати продаж' }}{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">{{ 'Додати продаж' if form_type == 'add' else 'Редагувати продаж' }}</h2>
+    <form method="post">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.trade_point_id.label(class="form-label") }}
+            {{ form.trade_point_id(class="form-control", id="trade_point_id") }}
+        </div>
+        <div class="form-group">
+            {{ form.seller_id.label(class="form-label") }}
+            {{ form.seller_id(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.product_id.label(class="form-label") }}
+            {{ form.product_id(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.quantity.label(class="form-label") }}
+            {{ form.quantity(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.price.label(class="form-label") }}
+            {{ form.price(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.date.label(class="form-label") }}
+            {{ form.date(class="form-control") }}
+        </div>
+        <div class="form-group" id="customer_field">
+            {{ form.customer_id.label(class="form-label") }}
+            {{ form.customer_id(class="form-control") }}
+        </div>
+        <div class="form-group mt-3">
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+<script>
+    var tradePointTypes = {
+        {% for tp in trade_points %}
+            '{{ tp['_id'] }}': '{{ tp['type'] }}',
+        {% endfor %}
+    };
+    function updateCustomerField() {
+        var tradePointId = document.getElementById('trade_point_id').value;
+        var tradePointType = tradePointTypes[tradePointId];
+        var customerField = document.getElementById('customer_field');
+        if (tradePointType === 'Кіоск' || tradePointType === 'Лоток') {
+            customerField.style.display = 'none';
+        } else {
+            customerField.style.display = 'block';
+        }
+    }
+    document.getElementById('trade_point_id').addEventListener('change', updateCustomerField);
+    // Викликати функцію при завантаженні сторінки
+    updateCustomerField();
+</script>
+{% endblock %}

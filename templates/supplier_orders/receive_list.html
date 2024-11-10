@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Отримання товару від постачальника{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Отримання товару від постачальника</h2>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Постачальник</th>
+                <th>Дата замовлення</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in supplier_orders %}
+            <tr>
+                <td>{{ order.supplier_name }}</td>
+                <td>{{ order.order_date.strftime('%d.%m.%Y') }}</td>
+                <td>
+                    <a href="{{ url_for('receive_supplier_order', supplier_order_id=order['_id']) }}" class="btn btn-success btn-sm">Отримати</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Деталі замовлення{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Деталі замовлення №{{ order._id }}</h2>
+    <p><strong>Постачальник:</strong> {{ order.supplier_name }}</p>
+    <p><strong>Дата замовлення:</strong> {{ order.order_date.strftime('%d.%m.%Y') }}</p>
+    <h4>Замовлені товари</h4>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Товар</th>
+                <th>Кількість</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order.products_ordered %}
+            <tr>
+                <td>{{ item.product_name }}</td>
+                <td>{{ item.quantity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('edit_supplier_order', order_id=order._id) }}" class="btn btn-warning">Редагувати</a>
+    <a href="{{ url_for('delete_supplier_order', order_id=order._id) }}" class="btn btn-danger">Видалити</a>
+</div>
+{% endblock %}

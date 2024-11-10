@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Управління користувачами{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Управління користувачами</h2>
+    <a href="{{ url_for('register') }}" class="btn btn-primary mb-3">Додати користувача</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Логін</th>
+                <th>Роль</th>
+                <th>Дії</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user.username }}</td>
+                <td>{{ user.role }}</td>
+                <td>
+                    <a href="{{ url_for('edit_user', user_id=user._id) }}" class="btn btn-warning btn-sm">Редагувати</a>
+                    <a href="{{ url_for('delete_user', user_id=user._id) }}" class="btn btn-danger btn-sm">Видалити</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

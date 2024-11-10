@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Звіти{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Звіти</h2>
+    <form method="post" action="{{ url_for('reports') }}">
+        <div class="form-group">
+            <label for="report_type">Виберіть тип звіту:</label>
+            <select class="form-control" id="report_type" name="report_type">
+                <option value="">-- Виберіть --</option>
+                <option value="1">Найбільш активні покупці</option>
+                <option value="2">Обсяг і середня ціна на товар</option>
+                <!-- Додайте інші типи звітів -->
+            </select>
+        </div>
+        <!-- Інші поля форми, якщо необхідно -->
+        <button type="submit" class="btn btn-primary">Згенерувати звіт</button>
+    </form>
+
+    {% if report_data %}
+        <h3 class="mt-5">{{ report_title }}</h3>
+        <!-- Відображення даних звіту -->
+    {% endif %}
+</div>
+{% endblock %}

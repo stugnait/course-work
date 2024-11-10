@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Вхід{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Вхід до системи</h2>
+    <form method="post" action="{{ url_for('login') }}">
+        {{ form.hidden_tag() }}
+        <div class="form-group">
+            {{ form.username.label(class="form-label") }}
+            {{ form.username(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+        <p><a href="{{ url_for('forgot_password') }}">Забули пароль?</a></p>
+        <p><a href="{{ url_for('register') }}">Зареєструватись</a></p>
+    </form>
+</div>
+{% endblock %}
