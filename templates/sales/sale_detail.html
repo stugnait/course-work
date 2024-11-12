@@ -8,7 +8,6 @@
     <p><strong>Ціна:</strong> {{ sale.price }} грн</p>
     <p><strong>Продавець:</strong> {{ sale.seller_name }}</p>
     <p><strong>Торговельна точка:</strong> {{ sale.trade_point_name }}</p>
-    <p><strong>Дата:</strong> {{ sale.date.strftime('%d.%m.%Y') }}</p>
     {% if sale.customer_info %}
         <h4>Інформація про покупця</h4>
         <p><strong>Ім'я:</strong> {{ sale.customer_info.name }}</p>

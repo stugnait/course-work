@@ -15,7 +15,7 @@
             {% for order in supplier_orders %}
             <tr>
                 <td>{{ order.supplier_name }}</td>
-                <td>{{ order.order_date.strftime('%d.%m.%Y') }}</td>
+                <td>{{ order.order_date }}</td>
                 <td>
                     <a href="{{ url_for('receive_supplier_order', supplier_order_id=order['_id']) }}" class="btn btn-success btn-sm">Отримати</a>
                 </td>

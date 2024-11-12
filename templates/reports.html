@@ -1,25 +1,130 @@
 {% extends "base.html" %}
 {% block title %}Звіти{% endblock %}
+
 {% block content %}
 <div class="container">
     <h2 class="mt-5">Звіти</h2>
+
+    <!-- Display error message if fields are missing -->
+    {% if error_message %}
+        <div class="alert alert-danger" role="alert">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
     <form method="post" action="{{ url_for('reports') }}">
         <div class="form-group">
             <label for="report_type">Виберіть тип звіту:</label>
-            <select class="form-control" id="report_type" name="report_type">
+            <select class="form-control" id="report_type" name="report_type" onchange="showReportFields()">
                 <option value="">-- Виберіть --</option>
                 <option value="1">Найбільш активні покупці</option>
                 <option value="2">Обсяг і середня ціна на товар</option>
-                <!-- Додайте інші типи звітів -->
+                <option value="3">Поставки товару від постачальника</option>
+                <option value="4">Заробітна плата продавців</option>
+                <option value="5">Обсяг продажів товару за період</option>
+                <option value="6">Рентабельність торговельної точки</option>
+                <option value="7">Товарообіг торговельної точки</option>
+                <option value="8">Номенклатура й обсяг товарів у точці</option>
+                <option value="9">Покупці товару</option>
+                <option value="10">Постачальники товару</option>
             </select>
         </div>
-        <!-- Інші поля форми, якщо необхідно -->
-        <button type="submit" class="btn btn-primary">Згенерувати звіт</button>
+
+        <!-- Conditional fields based on report type -->
+        <div id="product_id_field" class="form-group" style="display: none;">
+            <label for="product_id">Виберіть товар:</label>
+            <select class="form-control" id="product_id" name="product_id">
+                <option value="">-- Виберіть товар --</option>
+                {% for product in products %}
+                    <option value="{{ product._id }}">{{ product.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="supplier_id_field" class="form-group" style="display: none;">
+            <label for="supplier_id">Виберіть постачальника:</label>
+            <select class="form-control" id="supplier_id" name="supplier_id">
+                <option value="">-- Виберіть постачальника --</option>
+                {% for supplier in suppliers %}
+                    <option value="{{ supplier._id }}">{{ supplier.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="trade_point_id_field" class="form-group" style="display: none;">
+            <label for="trade_point_id">Виберіть торговельну точку:</label>
+            <select class="form-control" id="trade_point_id" name="trade_point_id">
+                <option value="">-- Виберіть торговельну точку --</option>
+                {% for trade_point in trade_points %}
+                    <option value="{{ trade_point._id }}">{{ trade_point.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div id="date_range_field" class="form-group" style="display: none;">
+            <label>Період:</label>
+            <input type="date" class="form-control" id="start_date" name="start_date">
+            <input type="date" class="form-control mt-2" id="end_date" name="end_date">
+        </div>
+
+        <div id="min_quantity_field" class="form-group" style="display: none;">
+            <label for="min_quantity">Мінімальна кількість:</label>
+            <input type="number" class="form-control" id="min_quantity" name="min_quantity" min="1">
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-3">Згенерувати звіт</button>
     </form>
 
+    <!-- Display report results if available -->
     {% if report_data %}
         <h3 class="mt-5">{{ report_title }}</h3>
-        <!-- Відображення даних звіту -->
+        <table class="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    {% for header in report_data[0].keys() %}
+                        <th>{{ header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report_data %}
+                    <tr>
+                        {% for cell in row.values() %}
+                            <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     {% endif %}
 </div>
+
+<script>
+    function showReportFields() {
+        let reportType = document.getElementById('report_type').value;
+
+        document.getElementById('product_id_field').style.display = 'none';
+        document.getElementById('supplier_id_field').style.display = 'none';
+        document.getElementById('trade_point_id_field').style.display = 'none';
+        document.getElementById('date_range_field').style.display = 'none';
+        document.getElementById('min_quantity_field').style.display = 'none';
+
+        if (reportType === '2' || reportType === '5' || reportType === '9' || reportType === '10') {
+            document.getElementById('product_id_field').style.display = 'block';
+        }
+        if (reportType === '3' || reportType === '10') {
+            document.getElementById('supplier_id_field').style.display = 'block';
+        }
+        if (reportType === '6' || reportType === '7' || reportType === '8') {
+            document.getElementById('trade_point_id_field').style.display = 'block';
+        }
+        if (reportType === '3' || reportType === '5' || reportType === '6' || reportType === '7') {
+            document.getElementById('date_range_field').style.display = 'block';
+        }
+        if (reportType === '9' || reportType === '10') {
+            document.getElementById('min_quantity_field').style.display = 'block';
+        }
+    }
+</script>
+
 {% endblock %}

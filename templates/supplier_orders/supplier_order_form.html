@@ -2,42 +2,30 @@
 {% block title %}{{ 'Додати замовлення постачальнику' if form_type == 'add' else 'Редагувати замовлення постачальнику' }}{% endblock %}
 {% block content %}
 <div class="container">
-    <h2 class="mt-5">{{ 'Додати замовлення постачальнику' if form_type == 'add' else 'Редагувати замовлення постачальнику' }}</h2>
+    <h2 class="mt-5">Додати замовлення постачальнику</h2>
     <form method="post">
-        {{ form.hidden_tag() }}
         <div class="form-group">
-            {{ form.supplier_id.label(class="form-label") }}
-            {{ form.supplier_id(class="form-control") }}
+            <label for="supplier_id">Постачальник</label>
+            <select class="form-control" id="supplier_id" name="supplier_id">
+                {% for supplier in suppliers %}
+                    <option value="{{ supplier['_id'] }}">{{ supplier['name'] }}</option>
+                {% endfor %}
+            </select>
         </div>
         <div class="form-group">
-            {{ form.order_date.label(class="form-label") }}
-            {{ form.order_date(class="form-control") }}
+            <label for="order_date">Дата замовлення</label>
+            <input type="date" class="form-control" id="order_date" name="order_date" required>
         </div>
         <div class="form-group">
-            {{ form.selected_requests.label(class="form-label") }}
-            {{ form.selected_requests(class="form-control", size=5, multiple=true) }}
+            <label for="selected_requests">Вибрані заявки</label>
+            <select class="form-control" id="selected_requests" name="selected_requests" multiple size="5">
+                {% for request in pending_requests %}
+                    <option value="{{ request['_id'] }}">Заявка {{ request['_id'] }} від {{ request['date'] }}</option>
+                {% endfor %}
+            </select>
         </div>
-        {% if form.products_ordered %}
-            <h3 class="mt-4">Товари в замовленні</h3>
-            {% for item_form in form.products_ordered %}
-                <div class="form-row">
-                    <div class="form-group col-md-4">
-                        {{ item_form.product_id.label(class="form-label") }}
-                        {{ item_form.product_id(class="form-control", readonly=true) }}
-                    </div>
-                    <div class="form-group col-md-4">
-                        {{ item_form.product_name.label(class="form-label") }}
-                        {{ item_form.product_name(class="form-control", readonly=true) }}
-                    </div>
-                    <div class="form-group col-md-4">
-                        {{ item_form.quantity.label(class="form-label") }}
-                        {{ item_form.quantity(class="form-control") }}
-                    </div>
-                </div>
-            {% endfor %}
-        {% endif %}
         <div class="form-group mt-3">
-            {{ form.submit(class="btn btn-primary") }}
+            <button type="submit" class="btn btn-primary">Підтвердити</button>
         </div>
     </form>
 </div>

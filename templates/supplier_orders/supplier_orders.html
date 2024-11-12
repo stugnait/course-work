@@ -3,7 +3,6 @@
 {% block content %}
 <div class="container">
     <h2 class="mt-5">Замовлення постачальникам</h2>
-    <a href="{{ url_for('add_supplier_order') }}" class="btn btn-primary mb-3">Додати замовлення</a>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -18,7 +17,7 @@
             <tr>
                 <td>{{ order._id }}</td>
                 <td>{{ order.supplier_name }}</td>
-                <td>{{ order.order_date.strftime('%d.%m.%Y') }}</td>
+                <td>{{ order.order_date }}</td>
                 <td>
                     <a href="{{ url_for('view_supplier_order', order_id=order._id) }}" class="btn btn-info btn-sm">Переглянути</a>
                     <a href="{{ url_for('edit_supplier_order', order_id=order._id) }}" class="btn btn-warning btn-sm">Редагувати</a>
