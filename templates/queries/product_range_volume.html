@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Номенклатура та обсяг товарів{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Номенклатура та обсяг товарів</h2>
+    <form method="post">
+        <div class="form-group">
+            <label for="trade_point">Торговельна точка:</label>
+            <select id="trade_point" name="trade_point" class="form-control">
+                {% for tp in trade_points %}
+                    <option value="{{ tp._id }}">{{ tp.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Пошук</button>
+    </form>
+    <ul class="list-group mt-4">
+        {% for item in inventory_results %}
+            <li class="list-group-item">{{ item.product_name }}: {{ item.volume }} штук</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

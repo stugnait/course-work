@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Відомості про поставки{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Відомості про поставки</h2>
+    <form method="post">
+        <div class="form-group">
+            <label for="supplier">Постачальник:</label>
+            <select id="supplier" name="supplier" class="form-control">
+                {% for supplier in suppliers %}
+                    <option value="{{ supplier._id }}">{{ supplier.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="product">Товар:</label>
+            <select id="product" name="product" class="form-control">
+                {% for product in products %}
+                    <option value="{{ product._id }}">{{ product.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="start_date">Дата початку:</label>
+            <input type="date" id="start_date" name="start_date" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="end_date">Дата закінчення:</label>
+            <input type="date" id="end_date" name="end_date" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Пошук</button>
+    </form>
+
+    <h3 class="mt-4">Результати:</h3>
+    <ul class="list-group mt-2">
+        {% for result in results %}
+            <li class="list-group-item">
+                <strong>Товар:</strong> {{ result.product_name }}<br>
+                <strong>Постачальник:</strong> {{ result.supplier_name }}<br>
+                <strong>Кількість:</strong> {{ result.quantity }}<br>
+                <strong>Дата замовлення:</strong> {{ result.order_date }}
+            </li>
+        {% else %}
+            <li class="list-group-item">Немає даних для відображення.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Товарообіг торговельної точки{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Товарообіг торговельної точки</h2>
+    <form method="post">
+        <div class="form-group">
+            <label for="trade_point">Торговельна точка:</label>
+            <select id="trade_point" name="trade_point" class="form-control">
+                {% for tp in trade_points %}
+                    <option value="{{ tp._id }}">{{ tp.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </form>
+
+    {% if turnover_results %}
+        <h3 class="mt-5">Результати:</h3>
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>Торговельна точка</th>
+                    <th>Загальна кількість проданих товарів</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in turnover_results %}
+                    <tr>
+                        <td>{{ result.trade_point_name }}</td>
+                        <td>{{ result.total_quantity_sold }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="mt-4">Будь ласка, виберіть торговельну точку та діапазон дат, щоб побачити товарообіг.</p>
+    {% endif %}
+</div>
+{% endblock %}

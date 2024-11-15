@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <h2>Product Volume and Prices</h2>
+        <form method="post">
+            <label for="product">Product:</label>
+            <select id="product" name="product" class="form-control">
+                {% for product in products %}
+                    <option value="{{ product._id }}">{{ product.name }}</option>
+                {% endfor %}
+            </select>
+            <label for="trade_point">Trade Point:</label>
+            <select id="trade_point" name="trade_point" class="form-control">
+                <option value="">All</option>
+                {% for tp in trade_points %}
+                    <option value="{{ tp._id }}">{{ tp.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary mt-2">Search</button>
+        </form>
+        <ul class="list-group mt-4">
+            {% for result in results %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Торговельна точка</th>
+                            <th>Назва продукту</th>
+                            <th>Кількість</th>
+                            <th>Ціна</th>
+                            <th>Валюта</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for result in results %}
+                            <tr>
+                                <td>{{ result.trade_point_name }}</td>
+                                <td>{{ result.product_name }}</td>
+                                <td>{{ result.volume }}</td>
+                                <td>{{ result.price }}</td>
+                                <td>{{ result.currency }}</td>
+                            </tr>
+                        {% else %}
+                            <tr>
+                                <td colspan="7">Немає даних для відображення.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+            {% endfor %}
+    </ul>
+</div>
+{% endblock %}

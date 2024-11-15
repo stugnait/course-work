@@ -1,43 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Деталі заявки{% endblock %}
+{% block title %}Додати Заявку{% endblock %}
 {% block content %}
 <div class="container">
-<h2 class="mt-5">Редагувати Заявку</h2>
+    <h2 class="mt-5">Додати Заявку</h2>
+
     <form method="POST">
         <div class="form-group">
             <label for="date">Дата</label>
-            <input type="date" class="form-control" id="date" name="date" value="{{ request_item['date'] }}" required>
+            <input type="date" class="form-control" id="date" name="date" required>
         </div>
+
         <div class="form-group">
             <label for="trade_point_id">Торговельна точка</label>
-            <select class="form-control" id="trade_point_id" name="trade_point_id">
+            <select class="form-control" id="trade_point_id" name="trade_point_id" required>
+                <option value="">-- Виберіть торговельну точку --</option>
                 {% for tp in trade_points %}
-                    <option value="{{ tp['_id'] }}" {% if tp['_id'] == request_item['trade_point_id'] %}selected{% endif %}>{{ tp['name'] }}</option>
+                    <option value="{{ tp['_id'] }}">{{ tp['name'] }}</option>
                 {% endfor %}
             </select>
         </div>
+
         <h4 class="mt-4">Товари</h4>
         <div id="products">
-            {% set index = 0 %}
-            {% for item in request_item['products_requested'] %}
-                <div class="form-row">
-                    <div class="form-group col-md-8">
-                        <label for="product_id_{{ index }}">Товар</label>
-                        <select class="form-control" id="product_id_{{ index }}" name="product_id_{{ index }}">
-                            {% for product in products %}
-                                <option value="{{ product['_id'] }}" {% if product['_id'] == item['product_id'] %}selected{% endif %}>{{ product['name'] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group col-md-4">
-                        <label for="quantity_{{ index }}">Кількість</label>
-                        <input type="number" class="form-control" id="quantity_{{ index }}" name="quantity_{{ index }}" value="{{ item['quantity'] }}" min="1">
-                    </div>
-                </div>
-                {% set index = index + 1 %}
-            {% endfor %}
+            <!-- Dynamic product entries will be added here -->
         </div>
-        <button type="button" class="btn btn-secondary" id="add-product">Додати товар</button>
+        <button type="button" class="btn btn-secondary mt-3" id="add-product">Додати товар</button>
+
         <div class="form-group mt-3">
             <button type="submit" class="btn btn-primary">Зберегти</button>
         </div>
@@ -45,13 +33,14 @@
 </div>
 
 <script>
-    var productIndex = {{ request_item['products_requested']|length }};
+    var productIndex = 0;
     document.getElementById('add-product').addEventListener('click', function() {
         var newProduct = `
-            <div class="form-row">
+            <div class="form-row mt-2">
                 <div class="form-group col-md-8">
                     <label for="product_id_${productIndex}">Товар</label>
-                    <select class="form-control" id="product_id_${productIndex}" name="product_id_${productIndex}">
+                    <select class="form-control" id="product_id_${productIndex}" name="product_id_${productIndex}" required>
+                        <option value="">-- Виберіть товар --</option>
                         {% for product in products %}
                             <option value="{{ product['_id'] }}">{{ product['name'] }}</option>
                         {% endfor %}
@@ -59,7 +48,7 @@
                 </div>
                 <div class="form-group col-md-4">
                     <label for="quantity_${productIndex}">Кількість</label>
-                    <input type="number" class="form-control" id="quantity_${productIndex}" name="quantity_${productIndex}" min="1">
+                    <input type="number" class="form-control" id="quantity_${productIndex}" name="quantity_${productIndex}" min="1" required>
                 </div>
             </div>
         `;

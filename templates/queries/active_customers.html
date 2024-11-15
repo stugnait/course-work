@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-2">
+    <h2>Most Active Customers</h2>
+    <form method="post">
+        <label for="trade_point">Trade Point:</label>
+        <select id="trade_point" name="trade_point" class="form-control">
+            <option value="">All</option>
+            {% for tp in trade_points %}
+                <option value="{{ tp._id }}">{{ tp.name }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-primary mt-2">Search</button>
+    </form>
+    <ul class="list-group mt-4">
+        {% for customer in customers %}
+            <li class="list-group-item">{{ customer.name }} - Purchases: {{ customer.count }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

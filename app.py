@@ -1,5 +1,5 @@
 from bson.errors import InvalidId
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, request, render_template, redirect, url_for, flash, request, jsonify
 from flask_bootstrap import Bootstrap
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from pymongo import MongoClient
@@ -114,10 +114,11 @@ class SupplierForm(FlaskForm):
 
 
 class ProductForm(FlaskForm):
-    name = StringField('Назва', validators=[DataRequired()])
-    description = TextAreaField('Опис', validators=[Optional()])
-    suppliers = SelectField('Постачальники', coerce=str, validators=[DataRequired()], choices=[])
-    submit = SubmitField('Зберегти')
+    name = StringField('Name', validators=[DataRequired()])
+    description = StringField('Description')
+    suppliers = SelectMultipleField('Suppliers', choices=[], coerce=str)
+    amount = DecimalField('Price', validators=[DataRequired()])
+    currency = StringField('Currency', default="USD")
 
 
 class CustomerForm(FlaskForm):
@@ -494,19 +495,20 @@ def products():
 @app.route('/products/<product_id>')
 @login_required
 def view_product(product_id):
+    # Retrieve the product
     product = db.products.find_one({'_id': ObjectId(product_id)})
     if not product:
         flash('Товар не знайдено.', 'danger')
         return redirect(url_for('products'))
 
-    # Get suppliers
+    # Retrieve suppliers for this product
     suppliers = list(db.suppliers.find({'_id': {'$in': [ObjectId(sid) for sid in product.get('suppliers', [])]}}))
 
-    # Get quantities at trade points
+    # Retrieve quantities of the product at each trade point
     quantities = []
     trade_points = list(db.trade_points.find())
     for trade_point in trade_points:
-        quantity = trade_point.get('inventory', {}).get(product_id, 0)  # Default to 0 if product_id is not in inventory
+        quantity = trade_point.get('inventory', {}).get(str(product['_id']), 0)  # Convert ObjectId to string
         quantities.append({
             'trade_point_name': trade_point['name'],
             'amount': quantity
@@ -521,51 +523,77 @@ def add_product():
     if current_user.role not in ['owner', 'admin', 'operator']:
         flash('У вас немає прав доступу до цієї сторінки.', 'danger')
         return redirect(url_for('access_denied'))
+
     form = ProductForm()
-    # Заповнити вибір постачальників
+    # Populate suppliers choices
     suppliers = list(db.suppliers.find())
     form.suppliers.choices = [(str(supplier['_id']), supplier['name']) for supplier in suppliers]
+
     if form.validate_on_submit():
+        # Convert amount from Decimal to float
+        price_amount = float(form.amount.data)
+
+        # Prepare the product dictionary with the price
         product = {
             'name': form.name.data,
             'description': form.description.data,
-            'suppliers': [form.suppliers.data],
-            'prices': []  # Можливо, додати логіку для цін
+            'prices': [{
+                'amount': price_amount,
+                'currency': form.currency.data
+            }]
         }
+
+        # Insert the product into the database
         db.products.insert_one(product)
         flash('Товар успішно додано.', 'success')
         return redirect(url_for('products'))
+
     return render_template('products/product_form.html', form=form, form_type='add')
 
 
 @app.route('/products/edit/<product_id>', methods=['GET', 'POST'])
 @login_required
 def edit_product(product_id):
+    # Role-based access control
     if current_user.role not in ['owner', 'admin', 'operator']:
         flash('У вас немає прав доступу до цієї сторінки.', 'danger')
         return redirect(url_for('access_denied'))
+
+    # Find the product
     product = db.products.find_one({'_id': ObjectId(product_id)})
     if not product:
         flash('Товар не знайдено.', 'danger')
         return redirect(url_for('products'))
+
+    # Prepopulate the form with current product data
     form = ProductForm(data={
         'name': product['name'],
         'description': product.get('description', ''),
-        'suppliers': product.get('suppliers', [])[0] if product.get('suppliers') else ''
+        'suppliers': [str(supplier) for supplier in product.get('suppliers', [])],  # Convert ObjectId to str
+        'amount': product['prices'][0]['amount'] if product['prices'] else 0,
+        'currency': product['prices'][0]['currency'] if product['prices'] else 'USD'
     })
-    # Заповнити вибір постачальників
+
+    # Populate supplier choices
     suppliers = list(db.suppliers.find())
     form.suppliers.choices = [(str(supplier['_id']), supplier['name']) for supplier in suppliers]
+
     if form.validate_on_submit():
+        # Prepare updated data
         updated_data = {
             'name': form.name.data,
             'description': form.description.data,
-            'suppliers': [form.suppliers.data]
-            # Можливо, додати логіку для оновлення цін
+            'suppliers': [ObjectId(supplier_id) for supplier_id in form.suppliers.data],
+            'prices': [{
+                'amount': float(form.amount.data),  # Convert Decimal to float
+                'currency': form.currency.data
+            }]
         }
+        # Update the product in the database
         db.products.update_one({'_id': ObjectId(product_id)}, {'$set': updated_data})
         flash('Товар успішно оновлено.', 'success')
-        return redirect(url_for('products'))
+        return redirect(url_for('view_product', product_id=product_id))
+
     return render_template('products/product_form.html', form=form, form_type='edit')
 
 
@@ -658,7 +686,8 @@ def delete_supplier(supplier_id):
 @app.route('/supplier_orders')
 @login_required
 def supplier_orders():
-    orders = list(db.supplier_orders.find())
+    # Retrieve only orders where 'received' is either missing or set to False
+    orders = list(db.supplier_orders.find({"$or": [{"received": {"$exists": False}}, {"received": False}]}))
     for order in orders:
         supplier = db.suppliers.find_one({'_id': ObjectId(order['supplier_id'])})
         order['supplier_name'] = supplier['name'] if supplier else 'Не вказано'
@@ -749,6 +778,52 @@ class SalesFilterForm(FlaskForm):
     seller_id = SelectField('Продавець', choices=[], validators=[Optional()], coerce=str)
     submit = SubmitField('Фільтрувати')
 
+
+@app.route('/suppliers_for_product', methods=['GET', 'POST'])
+@login_required
+def suppliers_for_product():
+    products = list(db.products.find())
+    suppliers = []
+
+    if request.method == 'POST':
+        product_id = request.form.get('product')
+        min_quantity = int(request.form.get('min_quantity', 0))
+
+        # Dictionary to accumulate total quantities per supplier
+        supplier_quantities = {}
+
+        # Find supplier orders that include the specified product and are marked as received
+        supplier_orders = db.supplier_orders.find({
+            "received": True,
+            "related_requests": {"$exists": True, "$ne": []}  # Ensure related_requests is not empty
+        })
+
+        # Process each supplier order
+        for order in supplier_orders:
+            supplier_id = order["supplier_id"]
+
+            # Navigate to each request linked in related_requests
+            for request_id in order["related_requests"]:
+                request_item = db.requests.find_one({"_id": request_id})
+                if request_item:
+                    # Find the product in products_requested within the request
+                    for product_request in request_item.get("products_requested", []):
+                        if product_request["product_id"] == ObjectId(product_id):
+                            quantity = int(product_request["quantity"])
+                            # Accumulate quantity for the supplier
+                            supplier_quantities[supplier_id] = supplier_quantities.get(supplier_id, 0) + quantity
+
+        # Filter suppliers based on min_quantity and retrieve supplier details
+        for supplier_id, total_quantity in supplier_quantities.items():
+            if total_quantity >= min_quantity:
+                supplier = db.suppliers.find_one({"_id": supplier_id})
+                if supplier:
+                    suppliers.append({
+                        "name": supplier["name"],
+                        "quantity": total_quantity
+                    })
+
+    return render_template('queries/suppliers_for_product.html', products=products, suppliers=suppliers)
 
 # Маршрути для продажів
 @app.route('/sales', methods=['GET', 'POST'])
@@ -1022,22 +1097,38 @@ def view_request(request_id):
     return render_template('requests/request_detail.html', request=request_item, products_requested=products_requested)
 
 
+from flask import render_template, request, flash, redirect, url_for
+from bson import ObjectId
+
+
 @app.route('/requests/add', methods=['GET', 'POST'])
 def add_request():
+    # Fetch trade points and products for dropdowns
+    trade_points = list(db.trade_points.find({}, {"_id": 1, "name": 1}))
+    products = list(db.products.find({}, {"_id": 1, "name": 1}))
+
     if request.method == 'POST':
         # Get data from the form
         date = request.form.get('date')
         trade_point_id = request.form.get('trade_point_id')
         products_requested = []
-        product_ids = request.form.getlist('product_id')
-        quantities = request.form.getlist('quantity')
 
-        for product_id, quantity in zip(product_ids, quantities):
-            products_requested.append({
-                'product_id': ObjectId(product_id),
-                'product_name': db.products.find_one({'_id': ObjectId(product_id)})['name'],
-                'quantity': quantity
-            })
+        # Process each product added in the form
+        for key in request.form:
+            if key.startswith('product_id_'):
+                index = key.split('_')[-1]
+                product_id = request.form.get(f'product_id_{index}')
+                quantity = request.form.get(f'quantity_{index}')
+                if product_id and quantity:
+                    products_requested.append({
+                        'product_id': ObjectId(product_id),
+                        'quantity': int(quantity)
+                    })
+
+        # Check if all required fields are provided
+        if not date or not trade_point_id or not products_requested:
+            flash("Всі поля повинні бути заповнені", "danger")
+            return render_template('requests/request_form.html', trade_points=trade_points, products=products)
 
         # Create new request object
         new_request = {
@@ -1049,11 +1140,7 @@ def add_request():
         # Insert into the database
         db.requests.insert_one(new_request)
         flash('Заявку успішно додано.', 'success')
-        return redirect(url_for('add_request'))
-
-    # Get trade points and products from the database
-    trade_points = list(db.trade_points.find())
-    products = list(db.products.find())
+        return redirect(url_for('requests_route'))
 
     return render_template('requests/request_form.html', trade_points=trade_points, products=products)
 
@@ -1116,117 +1203,203 @@ def delete_request(request_id):
     return redirect(url_for('requests_route'))
 
 
-from flask import flash
-
-
-@app.route('/reports', methods=['GET', 'POST'])
-def reports():
-    report_data = None
-    report_title = ""
-    error_message = None  # Variable to store any validation error messages
-
-    # Fetch data for dropdowns (display names instead of IDs)
-    trade_points = list(db.trade_points.find({}, {"_id": 1, "name": 1}))
-    products = list(db.products.find({}, {"_id": 1, "name": 1}))
-    suppliers = list(db.suppliers.find({}, {"_id": 1, "name": 1}))
+@app.route('/active_customers', methods=['GET', 'POST'])
+@login_required
+def active_customers():
+    trade_points = list(db.trade_points.find())
+    customers = []
 
     if request.method == 'POST':
-        report_type = request.form.get('report_type')
+        trade_point_type = request.form.get('trade_point_type')
+        trade_point_id = request.form.get('trade_point')
 
-        # Check if the report type is selected
-        if not report_type:
-            error_message = "Виберіть тип звіту, будь ласка."
+        query = {}
+        if trade_point_type:
+            query['type'] = trade_point_type
+        if trade_point_id:
+            query['_id'] = ObjectId(trade_point_id)
 
-        elif report_type == '1':
-            # Most Active Customers
-            report_data, report_title = get_active_customers_report()
+        trade_points_to_check = db.trade_points.find(query)
 
-        elif report_type == '2':
-            # Volume and Average Price of a Product
-            product_id = request.form.get('product_id')
-            if not product_id:
-                error_message = "Виберіть товар для звіту."
-            else:
-                report_data, report_title = get_product_volume_and_price_report(product_id)
+        for tp in trade_points_to_check:
+            sales = db.sales.find({'trade_point_id': tp['_id']})
+            customer_counts = {}
+            for sale in sales:
+                customer_id = sale['customer_id']
+                customer_counts[customer_id] = customer_counts.get(customer_id, 0) + 1
 
-        elif report_type == '3':
-            # Deliveries by a Specific Supplier
-            product_id = request.form.get('product_id')
-            supplier_id = request.form.get('supplier_id')
-            if not product_id or not supplier_id:
-                error_message = "Виберіть товар і постачальника для звіту."
-            else:
-                report_data, report_title = get_supplier_deliveries_report(product_id, supplier_id)
+            # Fetch customer names and counts
+            for customer_id, count in customer_counts.items():
+                customer = db.customers.find_one({"_id": customer_id})
+                if customer:
+                    customers.append({
+                        "name": customer['name'],
+                        "count": count
+                    })
 
-        elif report_type == '4':
-            # Sellers' Salaries
-            report_data, report_title = get_sellers_salary_report()
+    # Sort customers by count in descending order
+    customers = sorted(customers, key=lambda x: x['count'], reverse=True)
 
-        elif report_type == '5':
-            # Sales Volume for a Product
-            product_id = request.form.get('product_id')
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
-            if not product_id or not start_date or not end_date:
-                error_message = "Виберіть товар та період для звіту."
-            else:
-                report_data, report_title = get_sales_volume_report(product_id, start_date, end_date)
-
-        elif report_type == '6':
-            # Profitability of a Trade Point
-            trade_point_id = request.form.get('trade_point_id')
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
-            if not trade_point_id or not start_date or not end_date:
-                error_message = "Виберіть торговельну точку та період для звіту."
-            else:
-                report_data, report_title = get_trade_point_profitability_report(trade_point_id, start_date, end_date)
-
-        elif report_type == '7':
-            # Trade Turnover
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
-            if not start_date or not end_date:
-                error_message = "Виберіть період для звіту."
-            else:
-                report_data, report_title = get_trade_turnover_report(start_date, end_date)
-
-        elif report_type == '8':
-            # Inventory in a Trade Point
-            trade_point_id = request.form.get('trade_point_id')
-            if not trade_point_id:
-                error_message = "Виберіть торговельну точку для звіту."
-            else:
-                report_data, report_title = get_trade_point_inventory_report(trade_point_id)
-
-        elif report_type == '9':
-            # Customers who Purchased a Specific Product
-            product_id = request.form.get('product_id')
-            min_quantity = int(request.form.get('min_quantity', 1))
-            if not product_id:
-                error_message = "Виберіть товар для звіту."
-            else:
-                report_data, report_title = get_customers_purchased_product_report(product_id, min_quantity)
-
-        elif report_type == '10':
-            # Suppliers for a Product
-            product_id = request.form.get('product_id')
-            min_quantity = int(request.form.get('min_quantity', 1))
-            if not product_id:
-                error_message = "Виберіть товар для звіту."
-            else:
-                report_data, report_title = get_suppliers_for_product_report(product_id, min_quantity)
-
-    return render_template('reports.html',
-                           report_data=report_data,
-                           report_title=report_title,
-                           error_message=error_message,  # Pass the error message to the template
-                           trade_points=trade_points,
-                           products=products,
-                           suppliers=suppliers)
+    return render_template('queries/active_customers.html', trade_points=trade_points, customers=customers)
 
 
-# Маршрут для профілю користувача
+@app.route('/product_volume_prices', methods=['GET', 'POST'])
+@login_required
+def product_volume_prices():
+    trade_points = list(db.trade_points.find())
+    products = list(db.products.find())
+    results = []
+
+    if request.method == 'POST':
+        product_id = request.form.get('product')
+        trade_point_type = request.form.get('trade_point_type')
+        trade_point_id = request.form.get('trade_point')
+
+        query = {}
+        if trade_point_type:
+            query['type'] = trade_point_type
+        if trade_point_id:
+            query['_id'] = ObjectId(trade_point_id)
+
+        trade_points_to_check = db.trade_points.find(query)
+
+        for tp in trade_points_to_check:
+            product_volume = tp.get('inventory', {}).get(str(product_id), 0)
+
+            product = db.products.find_one({"_id": ObjectId(product_id)})
+            if product:
+                # Extract the price from the first entry in the prices array, if available
+                price_info = product.get("prices", [{}])[0]
+                product_price = price_info.get("amount", "N/A")
+                product_currency = price_info.get("currency", "N/A")
+
+                results.append({
+                    "trade_point_name": tp["name"],
+                    "product_name": product["name"],
+                    "volume": product_volume,
+                    "price": product_price,
+                    "currency": product_currency,
+                    "rent_payments": tp.get("rent_payments", "N/A"),
+                    "utility_payments": tp.get("utility_payments", "N/A")
+                })
+
+    return render_template('queries/product_volume_prices.html', trade_points=trade_points, products=products,
+                           results=results)
+
+
+@app.route('/supplies_info', methods=['GET', 'POST'])
+@login_required
+def supplies_info():
+    suppliers = list(db.suppliers.find())
+    products = list(db.products.find())
+    results = []
+
+    if request.method == 'POST':
+        supplier_id = request.form.get('supplier')
+        product_id = request.form.get('product')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+
+        # Build query for supplier orders
+        query = {
+            "supplier_id": ObjectId(supplier_id),
+            "received": True  # Only consider orders that have been received
+        }
+
+        if start_date and end_date:
+            query["order_date"] = {"$gte": start_date, "$lte": end_date}
+
+        # Query supplier orders that match the criteria
+        supplier_orders = db.supplier_orders.find(query)
+
+        # Process the results
+        total_quantity = 0
+        for order in supplier_orders:
+            for request_id in order["related_requests"]:
+                dbrequest = db.requests.find_one({"_id": request_id})
+                if dbrequest:
+                    # Look for the specified product in products_requested
+                    for product_request in dbrequest.get("products_requested", []):
+                        if product_request["product_id"] == ObjectId(product_id):
+                            total_quantity += int(product_request["quantity"])
+
+            # Append each order result to the list with the accumulated quantity
+            results.append({
+                "product_name": db.products.find_one({"_id": ObjectId(product_id)})["name"],
+                "supplier_name": db.suppliers.find_one({"_id": ObjectId(supplier_id)})["name"],
+                "order_date": order.get("order_date", "N/A"),
+                "quantity": total_quantity
+            })
+
+    return render_template('queries/supplies_info.html', suppliers=suppliers, products=products, results=results)
+
+
+@app.route('/salaries_info', methods=['GET', 'POST'])
+@login_required
+def salaries_info():
+    # Retrieve all trade points for the dropdown filter
+    trade_points = list(db.trade_points.find())
+    salaries = []
+
+    if request.method == 'POST':
+        # Get form data for filtering
+        trade_point_type = request.form.get('trade_point_type')
+        trade_point_id = request.form.get('trade_point')
+
+        # Build the query for the trade points based on trade point type and specific trade point
+        query = {}
+        if trade_point_type:
+            query['type'] = trade_point_type  # Assuming trade points have a 'type' field
+        if trade_point_id:
+            query['_id'] = ObjectId(trade_point_id)
+
+        # Fetch trade points based on the query
+        selected_trade_points = db.trade_points.find(query)
+
+        # Loop through each trade point and get seller information
+        for trade_point in selected_trade_points:
+            trade_point_name = trade_point["name"]
+            for seller_id in trade_point.get("sellers", []):  # Loop through seller IDs
+                seller = db.sellers.find_one({"_id": seller_id})
+                if seller:
+                    salaries.append({
+                        "name": seller["name"],  # Seller's name
+                        "salary": seller.get("salary", "N/A"),  # Seller's salary
+                        "trade_point_name": trade_point_name  # Trade point name
+                    })
+
+    return render_template('queries/salaries_info.html', trade_points=trade_points, salaries=salaries)
+
+
+@app.route('/sales_volume', methods=['GET', 'POST'])
+@login_required
+def sales_volume():
+    products = list(db.products.find())
+    total_volume = 0
+    product_name = ""
+
+    if request.method == 'POST':
+        product_id = request.form.get('product')
+
+        # Find the product to display its name in the results
+        product = db.products.find_one({"_id": ObjectId(product_id)})
+        if product:
+            product_name = product["name"]
+
+        # Calculate total volume for the selected product
+        total_volume = db.sales.aggregate([
+            {"$match": {"product_id": ObjectId(product_id)}},
+            {"$group": {"_id": "$product_id", "total_volume": {"$sum": "$volume"}}}
+        ])
+
+        # Extract the total volume result
+        total_volume = list(total_volume)
+        total_volume = total_volume[0]["total_volume"] if total_volume else 0
+
+    return render_template('queries/sales_volume.html', products=products, total_volume=total_volume,
+                           product_name=product_name)
+
+
 @app.route('/profile')
 @login_required
 def profile():
@@ -1282,20 +1455,29 @@ def receive_supplier_order(supplier_order_id):
         flash('Замовлення не знайдено.', 'danger')
         return redirect(url_for('supplier_orders'))
 
-    # Розподіл товару по торговельних точках на основі заявок
+    # Check if the order is already received
+    if supplier_order.get('received', False):
+        flash('Це замовлення вже виконано.', 'info')
+        return redirect(url_for('supplier_orders'))
+
+    # Distribute products to trade points based on requests
     for request_id in supplier_order['related_requests']:
         request_item = db.requests.find_one({'_id': ObjectId(request_id)})
         trade_point_id = request_item['trade_point_id']
         for product_request in request_item.get('products_requested', []):
             product_id = product_request['product_id']
-            quantity = int(product_request['quantity'])  # Перетворення на ціле число
+            quantity = int(product_request['quantity'])
 
-            # Оновити запаси товару в торговельній точці
+            # Update inventory in the trade point
             db.trade_points.update_one(
                 {'_id': ObjectId(trade_point_id)},
                 {'$inc': {f'inventory.{product_id}': quantity}}
             )
-    db.supplier_orders.delete_one({'_id': ObjectId(supplier_order_id)})
+
+    db.supplier_orders.update_one(
+        {'_id': ObjectId(supplier_order_id)},
+        {'$set': {'received': True}}
+    )
     flash('Товар успішно отримано та розподілено по торговельних точках.', 'success')
     return redirect(url_for('supplier_orders'))
 
@@ -1421,6 +1603,150 @@ def view_trade_point(trade_point_id):
     return render_template('trade_points/trade_point_detail.html', trade_point=trade_point, inventory=inventory)
 
 
+@app.route('/profitability', methods=['GET', 'POST'])
+@login_required
+def profitability():
+    trade_points = list(db.trade_points.find())
+    profitability_results = []
+
+    if request.method == 'POST':
+        trade_point_id = request.form.get('trade_point')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+
+        # Build the query for sales based on trade point and date range
+        query = {"trade_point_id": ObjectId(trade_point_id)}
+        if start_date and end_date:
+            query["date"] = {"$gte": start_date, "$lte": end_date}
+
+        # Retrieve sales records for the selected trade point and date range
+        sales_records = db.sales.find(query)
+
+        # Calculate total revenue by summing (quantity * price) for each sale
+        total_revenue = sum(record["quantity"] * record["price"] for record in sales_records)
+
+        # Retrieve trade point details for overhead costs
+        trade_point = db.trade_points.find_one({"_id": ObjectId(trade_point_id)})
+        if trade_point:
+            # Rent and utility payments from trade_point
+            rent_payments = trade_point.get("rent_payments", 0)
+            utility_payments = trade_point.get("utility_payments", 0)
+
+            # Calculate total salaries for sellers at this trade point
+            total_salaries = sum(seller["salary"] for seller in db.sellers.find({"trade_point_id": ObjectId(trade_point_id)}))
+
+            # Calculate total overhead costs (rent, utility, salaries)
+            overhead_costs = rent_payments + utility_payments + total_salaries
+
+            # Calculate profit and profitability ratio
+            profit = total_revenue - overhead_costs
+            profitability_ratio = total_revenue / overhead_costs if overhead_costs else 0
+
+            # Append the result to the list
+            profitability_results.append({
+                "trade_point_name": trade_point.get("name", "Unknown"),
+                "total_revenue": total_revenue,
+                "overhead_costs": overhead_costs,
+                "profit": profit,
+                "profitability_ratio": profitability_ratio
+            })
+
+    return render_template('queries/profitability.html', trade_points=trade_points,
+                           profitability_results=profitability_results)
+
+
+@app.route('/trade_turnover', methods=['GET', 'POST'])
+@login_required
+def trade_turnover():
+    trade_points = list(db.trade_points.find())
+    turnover_results = []
+
+    if request.method == 'POST':
+        trade_point_id = request.form.get('trade_point')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+
+        # Build the query for sales based on trade point and date range
+        query = {"trade_point_id": ObjectId(trade_point_id)}
+        if start_date and end_date:
+            query["date"] = {"$gte": start_date, "$lte": end_date}
+
+        # Retrieve sales records and calculate total quantity sold
+        sales_records = db.sales.find(query)
+        total_quantity_sold = sum(sale.get("quantity", 0) for sale in sales_records)
+
+        # Retrieve trade point name for display
+        trade_point = db.trade_points.find_one({"_id": ObjectId(trade_point_id)})
+        trade_point_name = trade_point.get("name", "Unknown") if trade_point else "Unknown"
+
+        # Append the result to the list
+        turnover_results.append({
+            "trade_point_name": trade_point_name,
+            "total_quantity_sold": total_quantity_sold
+        })
+
+    return render_template('queries/trade_turnover.html', trade_points=trade_points, turnover_results=turnover_results)
+
+
+@app.route('/customers_for_product', methods=['GET', 'POST'])
+@login_required
+def customers_for_product():
+    products = list(db.products.find())
+    customers = []
+
+    if request.method == 'POST':
+        product_id = request.form.get('product')
+        min_quantity = int(request.form.get('min_quantity', 0))
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+
+        # Build query to find sales of the specified product
+        query = {"product_id": ObjectId(product_id)}
+        if start_date and end_date:
+            query["date"] = {"$gte": start_date, "$lte": end_date}
+
+        # Fetch sales and count purchases per customer
+        sales = db.sales.find(query)
+        customer_counts = {}
+
+        # Aggregate total volume for each customer
+        for sale in sales:
+            customer_id = sale["customer_id"]
+            volume = sale.get("volume", 0)
+            customer_counts[customer_id] = customer_counts.get(customer_id, 0) + volume
+
+        for customer_id, total_volume in customer_counts.items():
+            if total_volume >= min_quantity:
+                customer = db.customers.find_one({"_id": customer_id})
+                if customer:
+                    customers.append({
+                        "name": customer['name'],
+                        "total_volume": total_volume
+                    })
+
+    return render_template('queries/customers_for_product.html', products=products, customers=customers)
+
+
+@app.route('/product_range_volume', methods=['GET', 'POST'])
+@login_required
+def product_range_volume():
+    trade_points = list(db.trade_points.find())
+    inventory_results = []
+
+    if request.method == 'POST':
+        trade_point_id = request.form.get('trade_point')
+
+        trade_point = db.trade_points.find_one({"_id": ObjectId(trade_point_id)})
+        if trade_point:
+            for product_id, volume in trade_point.get("inventory", {}).items():
+                product = db.products.find_one({"_id": ObjectId(product_id)})
+                if product:
+                    inventory_results.append({"product_name": product["name"], "volume": volume})
+
+    return render_template('queries/product_range_volume.html', trade_points=trade_points,
+                           inventory_results=inventory_results)
+
+
 @app.route('/supplier_orders/create', methods=['GET', 'POST'])
 @login_required
 def create_supplier_order():
@@ -1445,7 +1771,6 @@ def create_supplier_order():
             'related_requests': [ObjectId(req_id) for req_id in selected_requests]
         }
 
-        # Insert into the database
         db.supplier_orders.insert_one(supplier_order)
         flash('Замовлення постачальнику успішно створено.', 'success')
         return redirect(url_for('requests_route'))
@@ -1454,144 +1779,10 @@ def create_supplier_order():
                            pending_requests=pending_requests)
 
 
-#report functions
-
-def get_active_customers_report():
-    pipeline = [
-        {"$group": {"_id": "$customer_id", "total_purchases": {"$sum": "$quantity"}}},
-        {"$sort": {"total_purchases": -1}},
-        {"$lookup": {"from": "customers", "localField": "_id", "foreignField": "_id", "as": "customer"}},
-        {"$unwind": "$customer"},
-        {"$project": {"customer_name": "$customer.username", "total_purchases": 1}}
-    ]
-    data = list(db.sales.aggregate(pipeline))
-    return data, "Найбільш активні покупці"
-
-
-def get_product_volume_and_price_report(product_id):
-    pipeline = [
-        {"$match": {"product_id": ObjectId(product_id)}},
-        {"$group": {
-            "_id": "$trade_point_id",
-            "total_volume": {"$sum": "$quantity"},
-            "average_price": {"$avg": "$price"}
-        }},
-        {"$lookup": {"from": "trade_points", "localField": "_id", "foreignField": "_id", "as": "trade_point"}},
-        {"$unwind": "$trade_point"},
-        {"$project": {"trade_point_name": "$trade_point.name", "total_volume": 1, "average_price": 1}}
-    ]
-    data = list(db.sales.aggregate(pipeline))
-    return data, "Обсяг і середня ціна на товар"
-
-
-def get_supplier_deliveries_report(product_id, supplier_id):
-    pipeline = [
-        {"$match": {"product_id": ObjectId(product_id), "supplier_id": ObjectId(supplier_id)}},
-        {"$group": {
-            "_id": "$order_id",
-            "total_delivered": {"$sum": "$quantity"},
-            "last_delivery_date": {"$max": "$delivery_date"}
-        }},
-        {"$lookup": {"from": "suppliers", "localField": "_id", "foreignField": "_id", "as": "supplier"}},
-        {"$unwind": "$supplier"},
-        {"$project": {"supplier_name": "$supplier.name", "total_delivered": 1, "last_delivery_date": 1}}
-    ]
-    data = list(db.deliveries.aggregate(pipeline))
-    return data, "Відомості про поставки певного товару"
-
-
-def get_sellers_salary_report():
-    pipeline = [
-        {"$group": {
-            "_id": "$trade_point_id",
-            "total_salary": {"$sum": "$salary"}
-        }},
-        {"$lookup": {"from": "trade_points", "localField": "_id", "foreignField": "_id", "as": "trade_point"}},
-        {"$unwind": "$trade_point"},
-        {"$project": {"trade_point_name": "$trade_point.name", "total_salary": 1}}
-    ]
-    data = list(db.salaries.aggregate(pipeline))
-    return data, "Заробітна плата продавців"
-
-
-def get_sales_volume_report(product_id, start_date, end_date):
-    pipeline = [
-        {"$match": {
-            "product_id": ObjectId(product_id),
-            "date": {"$gte": start_date, "$lte": end_date}
-        }},
-        {"$group": {
-            "_id": "$trade_point_id",
-            "total_sales": {"$sum": "$quantity"}
-        }},
-        {"$lookup": {"from": "trade_points", "localField": "_id", "foreignField": "_id", "as": "trade_point"}},
-        {"$unwind": "$trade_point"},
-        {"$project": {"trade_point_name": "$trade_point.name", "total_sales": 1}}
-    ]
-    data = list(db.sales.aggregate(pipeline))
-    return data, "Обсяг продажів за товар"
-
-
-def get_trade_point_profitability_report(trade_point_id, start_date, end_date):
-    # Sum sales and expenses for profitability calculation
-    sales_pipeline = [
-        {"$match": {"trade_point_id": ObjectId(trade_point_id), "date": {"$gte": start_date, "$lte": end_date}}},
-        {"$group": {"_id": None, "total_sales": {"$sum": "$amount"}}}
-    ]
-    expenses_pipeline = [
-        {"$match": {"_id": ObjectId(trade_point_id)}},
-        {"$project": {
-            "expenses": {
-                "$add": ["$rent_payments", "$utility_payments", "$total_salary"]
-            }
-        }}
-    ]
-    sales = list(db.sales.aggregate(sales_pipeline))
-    expenses = list(db.trade_points.aggregate(expenses_pipeline))
-    profitability = (sales[0]['total_sales'] / expenses[0]['expenses']) if sales and expenses else 0
-    return [{"trade_point_id": trade_point_id, "profitability": profitability}], "Рентабельність торговельної точки"
-
-
-def get_trade_turnover_report(start_date, end_date):
-    pipeline = [
-        {"$match": {"date": {"$gte": start_date, "$lte": end_date}}},
-        {"$group": {"_id": "$trade_point_id", "total_turnover": {"$sum": "$amount"}}},
-        {"$lookup": {"from": "trade_points", "localField": "_id", "foreignField": "_id", "as": "trade_point"}},
-        {"$unwind": "$trade_point"},
-        {"$project": {"trade_point_name": "$trade_point.name", "total_turnover": 1}}
-    ]
-    data = list(db.sales.aggregate(pipeline))
-    return data, "Товарообіг торговельної точки"
-
-
-def get_trade_point_inventory_report(trade_point_id):
-    trade_point = db.trade_points.find_one({"_id": ObjectId(trade_point_id)})
-    inventory = [{"product_id": pid, "quantity": qty} for pid, qty in trade_point.get("inventory", {}).items()]
-    return inventory, "Номенклатура й обсяг товарів"
-
-
-def get_customers_purchased_product_report(product_id, min_quantity):
-    pipeline = [
-        {"$match": {"product_id": ObjectId(product_id), "quantity": {"$gte": min_quantity}}},
-        {"$group": {"_id": "$customer_id", "total_quantity": {"$sum": "$quantity"}}},
-        {"$lookup": {"from": "customers", "localField": "_id", "foreignField": "_id", "as": "customer"}},
-        {"$unwind": "$customer"},
-        {"$project": {"customer_name": "$customer.username", "total_quantity": 1}}
-    ]
-    data = list(db.sales.aggregate(pipeline))
-    return data, "Покупці, що купили товар"
-
-
-def get_suppliers_for_product_report(product_id, min_quantity):
-    pipeline = [
-        {"$match": {"product_id": ObjectId(product_id), "quantity": {"$gte": min_quantity}}},
-        {"$group": {"_id": "$supplier_id", "total_supplied": {"$sum": "$quantity"}}},
-        {"$lookup": {"from": "suppliers", "localField": "_id", "foreignField": "_id", "as": "supplier"}},
-        {"$unwind": "$supplier"},
-        {"$project": {"supplier_name": "$supplier.name", "total_supplied": 1}}
-    ]
-    data = list(db.deliveries.aggregate(pipeline))
-    return data, "Постачальники товару"
+@app.route('/reports')
+@login_required
+def reports():
+    return render_template('queries/index.html')
 
 
 # Обробка помилок

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Перелік покупців за видом товару{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5">Перелік покупців за видом товару</h2>
+    <form method="post">
+        <div class="form-group">
+            <label for="product">Товар:</label>
+            <select id="product" name="product" class="form-control">
+                {% for product in products %}
+                    <option value="{{ product._id }}">{{ product.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary mt-2">Пошук</button>
+    </form>
+    <ul class="list-group mt-4">
+        {% for customer in customers %}
+            <li class="list-group-item">{{ customer.name }} </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

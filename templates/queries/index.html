@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Звіти{% endblock %}
+{% block content %}
+<div class="container">
+    <h2 class="mt-5 text-center">Звіти</h2>
+    <p class="text-center mb-4">Оберіть потрібний звіт зі списку нижче:</p>
+    <div class="d-flex flex-wrap justify-content-center">
+        <a href="{{ url_for('active_customers') }}" class="btn btn-outline-primary m-2">Найбільш активні покупці</a>
+        <a href="{{ url_for('product_volume_prices') }}" class="btn btn-outline-primary m-2">Обсяг і ціни на товар</a>
+        <a href="{{ url_for('supplies_info') }}" class="btn btn-outline-primary m-2">Поставки певного товару</a>
+        <a href="{{ url_for('salaries_info') }}" class="btn btn-outline-primary m-2">Заробітна плата продавців</a>
+        <a href="{{ url_for('sales_volume') }}" class="btn btn-outline-primary m-2">Обсяг продажів товару</a>
+        <a href="{{ url_for('profitability') }}" class="btn btn-outline-primary m-2">Рентабельність торговельної точки</a>
+        <a href="{{ url_for('trade_turnover') }}" class="btn btn-outline-primary m-2">Товарообіг торговельної точки</a>
+        <a href="{{ url_for('product_range_volume') }}" class="btn btn-outline-primary m-2">Номенклатура та обсяг товарів</a>
+        <a href="{{ url_for('customers_for_product') }}" class="btn btn-outline-primary m-2">Перелік покупців за видом товару</a>
+        <a href="{{ url_for('suppliers_for_product') }}" class="btn btn-outline-primary m-2">Перелік постачальників товару</a>
+    </div>
+</div>
+{% endblock %}

@@ -1,38 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Деталі товару{% endblock %}
+{% block title %}Product Details{% endblock %}
 {% block content %}
 <div class="container">
-    <h2 class="mt-5">Деталі товару</h2>
-    <h3>{{ product.name }}</h3>
-    <p><strong>Опис:</strong> {{ product.description }}</p>
+    <h2>{{ product.name }}</h2>
+    <p><strong>Description:</strong> {{ product.description }}</p>
 
-    <h4>Постачальники</h4>
+    <h4>Suppliers:</h4>
     <ul>
         {% for supplier in suppliers %}
             <li>{{ supplier.name }}</li>
         {% endfor %}
     </ul>
 
-   <h4>Кількість у торговельних точках</h4>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Торговельна точка</th>
-                <th>Кількість</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for quantity in quantities %}
-            <tr>
-                <td>{{ quantity.trade_point_name }}</td>
-                <td>{{ quantity.amount }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <h4>Price:</h4>
+    <p>{{ product.prices[0].amount }} {{ product.prices[0].currency }}</p>
 
+    <h4>Inventory Quantities at Trade Points:</h4>
+    <ul>
+        {% for quantity in quantities %}
+            <li>{{ quantity.trade_point_name }}: {{ quantity.amount }}</li>
+        {% endfor %}
+    </ul>
 
-    <a href="{{ url_for('edit_product', product_id=product._id) }}" class="btn btn-warning">Редагувати</a>
-    <a href="{{ url_for('delete_product', product_id=product._id) }}" class="btn btn-danger">Видалити</a>
+    <a href="{{ url_for('edit_product', product_id=product._id) }}" class="btn btn-primary mt-3">Edit Product</a>
 </div>
 {% endblock %}

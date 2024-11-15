@@ -5,20 +5,35 @@
     <h2 class="mt-5">{% if form_type == 'edit' %}Редагувати{% else %}Додати{% endif %} товар</h2>
     <form method="post" action="">
         {{ form.hidden_tag() }}
+
+        <!-- Product Name -->
         <div class="form-group">
             {{ form.name.label(class="form-label") }}
             {{ form.name(class="form-control") }}
         </div>
+
+        <!-- Product Description -->
         <div class="form-group">
             {{ form.description.label(class="form-label") }}
             {{ form.description(class="form-control") }}
         </div>
+        <!-- Price Amount -->
         <div class="form-group">
-            {{ form.suppliers.label(class="form-label") }}
-            {{ form.suppliers(class="form-control") }}
+            {{ form.amount.label(class="form-label") }}
+            {{ form.amount(class="form-control", placeholder="Enter price") }}
         </div>
+
+        <!-- Price Currency -->
         <div class="form-group">
-            {{ form.submit(class="btn btn-success") }}
+            {{ form.currency.label(class="form-label") }}
+            {{ form.currency(class="form-control", placeholder="Enter currency (e.g., USD)") }}
+        </div>
+
+        <!-- Submit Button -->
+        <div class="form-group mt-4">
+            <button type="submit" class="btn btn-success">
+                {% if form_type == 'edit' %}Зберегти зміни{% else %}Додати товар{% endif %}
+            </button>
         </div>
     </form>
 </div>
